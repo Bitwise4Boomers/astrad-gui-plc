@@ -1,0 +1,641 @@
+
+<h2 class="sr-only">Interactive ASTRAD PLC-SCADA working design simulation for MCB and feeder control, with real-world implementation guide below.</h2>
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans);background:transparent}
+.sim{padding:1rem 0}
+.sim-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:0.5px solid var(--border)}
+.sim-header h3{font-size:13px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.06em}
+.badge{font-size:11px;padding:3px 10px;border-radius:999px;font-weight:500}
+.badge-ok{background:var(--bg-success);color:var(--text-success)}
+.badge-warn{background:var(--bg-warning);color:var(--text-warning)}
+.badge-err{background:var(--bg-danger);color:var(--text-danger)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.card{background:var(--surface-2);border:0.5px solid var(--border);border-radius:12px;padding:14px}
+.card-title{font-size:11px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px}
+.metric-val{font-size:22px;font-weight:500;color:var(--text-primary)}
+.metric-unit{font-size:12px;color:var(--text-muted);margin-left:3px}
+.metric-sub{font-size:11px;color:var(--text-secondary);margin-top:3px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;flex-shrink:0}
+.dot-ok{background:#22c55e}
+.dot-warn{background:#f59e0b}
+.dot-err{background:#ef4444}
+.dot-off{background:var(--border-strong)}
+.feeder-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border)}
+.feeder-row:last-child{border-bottom:none}
+.feeder-name{font-size:13px;font-weight:500;color:var(--text-primary);flex:1}
+.feeder-val{font-size:12px;color:var(--text-secondary);min-width:54px;text-align:right}
+.tog{display:flex;gap:4px}
+.tog button{font-size:11px;padding:4px 10px;border-radius:6px;border:0.5px solid var(--border-strong);background:var(--surface-1);color:var(--text-secondary);cursor:pointer;transition:all .15s}
+.tog button.active-on{background:var(--bg-success);color:var(--text-success);border-color:var(--border-success)}
+.tog button.active-off{background:var(--bg-danger);color:var(--text-danger);border-color:var(--border-danger)}
+.tog button.active-auto{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
+.bar-wrap{background:var(--surface-1);border-radius:4px;height:6px;overflow:hidden;margin-top:6px}
+.bar-fill{height:6px;border-radius:4px;transition:width .4s ease}
+.bar-ok{background:#22c55e}
+.bar-warn{background:#f59e0b}
+.bar-err{background:#ef4444}
+.sld-wrap{background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;overflow:hidden}
+.alarm-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:0.5px solid var(--border);font-size:12px}
+.alarm-row:last-child{border-bottom:none}
+.alarm-time{color:var(--text-muted);white-space:nowrap;font-size:11px;min-width:60px}
+.alarm-msg{color:var(--text-primary);flex:1;line-height:1.4}
+.alarm-sev{font-size:10px;padding:2px 7px;border-radius:999px;font-weight:500;white-space:nowrap}
+.sev-info{background:var(--bg-accent);color:var(--text-accent)}
+.sev-warn{background:var(--bg-warning);color:var(--text-warning)}
+.sev-crit{background:var(--bg-danger);color:var(--text-danger)}
+.sev-ok{background:var(--bg-success);color:var(--text-success)}
+.plc-status{display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px}
+.plc-row{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;background:var(--surface-1);border-radius:6px}
+.plc-key{color:var(--text-secondary)}
+.plc-val{font-weight:500;color:var(--text-primary)}
+.btn-main{font-size:12px;padding:7px 14px;border-radius:8px;border:0.5px solid var(--border-strong);background:var(--surface-2);color:var(--text-primary);cursor:pointer;font-weight:500;transition:all .15s}
+.btn-main:hover{background:var(--surface-1)}
+.btn-danger{border-color:var(--border-danger);background:var(--bg-danger);color:var(--text-danger)}
+.btn-danger:hover{background:var(--fill-danger);color:white}
+.btn-accent{border-color:var(--border-accent);background:var(--bg-accent);color:var(--text-accent)}
+.section-divider{border:none;border-top:0.5px solid var(--border);margin:1.5rem 0}
+.impl-section{margin-bottom:2rem}
+.impl-h2{font-size:15px;font-weight:500;color:var(--text-primary);margin-bottom:1rem;display:flex;align-items:center;gap:8px}
+.impl-h3{font-size:13px;font-weight:500;color:var(--text-secondary);margin-bottom:0.5rem;margin-top:1rem}
+.point{display:flex;gap:10px;margin-bottom:8px;font-size:13px;line-height:1.6;color:var(--text-primary)}
+.point-num{width:20px;height:20px;border-radius:50%;background:var(--surface-1);border:0.5px solid var(--border-strong);font-size:11px;font-weight:500;color:var(--text-muted);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
+.spec-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+.spec-table th{text-align:left;font-weight:500;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 10px;border-bottom:0.5px solid var(--border-strong)}
+.spec-table td{padding:7px 10px;border-bottom:0.5px solid var(--border);color:var(--text-primary);vertical-align:top}
+.spec-table tr:last-child td{border-bottom:none}
+.spec-table tr:nth-child(even) td{background:var(--surface-1)}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;padding:3px 8px;border-radius:6px;border:0.5px solid var(--border);color:var(--text-secondary);background:var(--surface-1);margin:2px}
+.timer-bar{height:4px;border-radius:2px;background:var(--bg-accent);transition:width .5s linear}
+</style>
+
+<div class="sim">
+
+<div class="sim-header">
+  <div>
+    <div style="font-size:16px;font-weight:500;color:var(--text-primary)">ASTRAD power & automation — live simulation</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-top:2px">PLC–SCADA MCB/feeder control · S7-1214C</div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <span id="sys-badge" class="badge badge-ok">System nominal</span>
+    <button class="btn-main btn-danger" onclick="triggerMainsFail()">Simulate mains fail</button>
+    <button class="btn-main" onclick="resetAll()">Reset</button>
+  </div>
+</div>
+
+<!-- SLD power flow -->
+<div class="sld-wrap">
+  <svg id="sld" width="100%" viewBox="0 0 640 130" font-family="inherit">
+    <!-- Grid incomer -->
+    <g id="g-grid">
+      <rect x="2" y="20" width="70" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="0.8" opacity=".3"/>
+      <text x="37" y="32" font-size="9" fill="var(--text-muted)" text-anchor="middle">11kV grid</text>
+      <text x="37" y="44" font-size="8" fill="var(--text-muted)" text-anchor="middle">630A / 36kA CB</text>
+    </g>
+    <line id="wire-grid" x1="72" y1="35" x2="110" y2="35" stroke="#22c55e" stroke-width="2.5"/>
+    <!-- TX -->
+    <ellipse cx="126" cy="35" rx="16" ry="12" fill="none" stroke="var(--border-strong)" stroke-width="1.2"/>
+    <text x="126" y="39" font-size="8" fill="var(--text-secondary)" text-anchor="middle">100kVA</text>
+    <line id="wire-tx" x1="142" y1="35" x2="185" y2="35" stroke="#22c55e" stroke-width="2.5"/>
+    <!-- LT Bus -->
+    <rect id="ltbus" x="185" y="28" width="280" height="14" rx="3" fill="#22c55e"/>
+    <text x="325" y="38" font-size="8" fill="white" text-anchor="middle" font-weight="500">415V LT Bus · 3-ph + N · 50Hz</text>
+    <!-- Feeders down -->
+    <!-- ACDB -->
+    <line id="f-acdb" x1="210" y1="42" x2="210" y2="72" stroke="#22c55e" stroke-width="2"/>
+    <rect x="180" y="72" width="60" height="22" rx="3" fill="var(--surface-2)" stroke="var(--border)" stroke-width="0.8"/>
+    <text x="210" y="86" font-size="8" fill="var(--text-primary)" text-anchor="middle" font-weight="500">ACDB</text>
+    <text x="210" y="105" font-size="7" fill="var(--text-muted)" text-anchor="middle">100A MCCB</text>
+    <text id="acdb-a" x="210" y="117" font-size="7" fill="var(--text-secondary)" text-anchor="middle">28.4A</text>
+    <!-- UPS -->
+    <line id="f-ups" x1="295" y1="42" x2="295" y2="72" stroke="#22c55e" stroke-width="2"/>
+    <rect x="265" y="72" width="60" height="22" rx="3" fill="var(--surface-2)" stroke="var(--border)" stroke-width="0.8"/>
+    <text x="295" y="86" font-size="8" fill="var(--text-primary)" text-anchor="middle" font-weight="500">UPS 3kVA</text>
+    <text x="295" y="105" font-size="7" fill="var(--text-muted)" text-anchor="middle">200A MCCB</text>
+    <text id="ups-a" x="295" y="117" font-size="7" fill="var(--text-secondary)" text-anchor="middle">35.1A</text>
+    <!-- DC-DB -->
+    <line id="f-dcdb" x1="380" y1="42" x2="380" y2="72" stroke="#22c55e" stroke-width="2"/>
+    <rect x="348" y="72" width="64" height="22" rx="3" fill="var(--surface-2)" stroke="var(--border)" stroke-width="0.8"/>
+    <text x="380" y="83" font-size="8" fill="var(--text-primary)" text-anchor="middle" font-weight="500">DC-DB</text>
+    <text x="380" y="94" font-size="7" fill="var(--text-muted)" text-anchor="middle">TRM Bank</text>
+    <text x="380" y="105" font-size="7" fill="var(--text-muted)" text-anchor="middle">CB 16A</text>
+    <text id="dcdb-a" x="380" y="117" font-size="7" fill="var(--text-secondary)" text-anchor="middle">41.2A</text>
+    <!-- DSP -->
+    <line id="f-dsp" x1="455" y1="42" x2="455" y2="72" stroke="#22c55e" stroke-width="2"/>
+    <rect x="425" y="72" width="60" height="22" rx="3" fill="var(--surface-2)" stroke="var(--border)" stroke-width="0.8"/>
+    <text x="455" y="86" font-size="8" fill="var(--text-primary)" text-anchor="middle" font-weight="500">DSP PDU</text>
+    <text x="455" y="105" font-size="7" fill="var(--text-muted)" text-anchor="middle">32A MCCB</text>
+    <text id="dsp-a" x="455" y="117" font-size="7" fill="var(--text-secondary)" text-anchor="middle">12.6A</text>
+    <!-- DG -->
+    <line id="f-dg" x1="548" y1="42" x2="548" y2="72" stroke="var(--border-strong)" stroke-width="1.5" stroke-dasharray="4,3" id="dg-line"/>
+    <rect id="dg-box" x="515" y="72" width="66" height="22" rx="3" fill="var(--surface-1)" stroke="var(--border)" stroke-width="0.8"/>
+    <text x="548" y="83" font-size="8" fill="var(--text-secondary)" text-anchor="middle" font-weight="500">DG 63kVA</text>
+    <text x="548" y="94" font-size="7" fill="var(--text-muted)" text-anchor="middle">ATS auto</text>
+    <text id="dg-status" x="548" y="117" font-size="7" fill="var(--text-muted)" text-anchor="middle">standby</text>
+    <!-- PLC icon -->
+    <rect x="610" y="20" width="28" height="90" rx="3" fill="var(--surface-1)" stroke="var(--border-strong)" stroke-width="0.8"/>
+    <text x="624" y="45" font-size="7" fill="var(--text-secondary)" text-anchor="middle" transform="rotate(-90,624,65)">S7-1214C PLC</text>
+    <line x1="610" y1="35" x2="598" y2="35" stroke="var(--border-strong)" stroke-width="0.7" stroke-dasharray="2,2"/>
+    <line x1="610" y1="55" x2="581" y2="55" stroke="var(--border-strong)" stroke-width="0.7" stroke-dasharray="2,2"/>
+    <line x1="610" y1="75" x2="548" y2="75" stroke="var(--border-strong)" stroke-width="0.7" stroke-dasharray="2,2"/>
+  </svg>
+</div>
+
+<!-- Metric cards row -->
+<div class="grid4" style="margin-bottom:12px">
+  <div class="card">
+    <div class="card-title">Mains status</div>
+    <div style="display:flex;align-items:center">
+      <span class="dot dot-ok" id="mains-dot"></span>
+      <span class="metric-val" id="mains-val" style="font-size:16px">415V / 50Hz</span>
+    </div>
+    <div class="metric-sub" id="mains-sub">Incomer CB: closed</div>
+  </div>
+  <div class="card">
+    <div class="card-title">UPS / battery</div>
+    <div style="display:flex;align-items:center">
+      <span class="dot dot-ok" id="ups-dot"></span>
+      <span class="metric-val" id="ups-val" style="font-size:16px">Online</span>
+    </div>
+    <div class="metric-sub" id="ups-sub">Battery: 96% · 30min</div>
+  </div>
+  <div class="card">
+    <div class="card-title">DG / ATS</div>
+    <div style="display:flex;align-items:center">
+      <span class="dot dot-off" id="dg-dot"></span>
+      <span class="metric-val" id="dg-val" style="font-size:16px">Standby</span>
+    </div>
+    <div class="metric-sub" id="dg-sub">Auto-start armed</div>
+    <div id="dg-timer-bar" style="display:none;margin-top:6px">
+      <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px" id="dg-timer-label">Transfer delay: 10s</div>
+      <div class="bar-wrap"><div class="timer-bar" id="dg-timer-fill" style="width:0%"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">TRM bank</div>
+    <div style="display:flex;align-items:center">
+      <span class="dot dot-ok" id="trm-dot"></span>
+      <span class="metric-val" id="trm-val" style="font-size:16px">582/588</span>
+    </div>
+    <div class="metric-sub" id="trm-sub">DC-DB: 41.2A · 38.4°C</div>
+  </div>
+</div>
+
+<!-- Feeder control + PLC status -->
+<div class="grid2" style="margin-bottom:12px">
+  <div class="card">
+    <div class="card-title">Feeder control</div>
+    <div id="feeder-list">
+      <div class="feeder-row">
+        <span class="dot dot-ok" id="d-acdb"></span>
+        <span class="feeder-name">ACDB (100A MCCB)</span>
+        <span class="feeder-val" id="v-acdb">28.4A</span>
+        <div class="tog">
+          <button id="b-acdb-on" class="active-on" onclick="toggleFeeder('acdb','on')">ON</button>
+          <button id="b-acdb-off" onclick="toggleFeeder('acdb','off')">OFF</button>
+        </div>
+      </div>
+      <div class="feeder-row">
+        <span class="dot dot-ok" id="d-ups"></span>
+        <span class="feeder-name">UPS input (200A MCCB)</span>
+        <span class="feeder-val" id="v-ups">35.1A</span>
+        <div class="tog">
+          <button id="b-ups-on" class="active-on" onclick="toggleFeeder('ups','on')">ON</button>
+          <button id="b-ups-off" onclick="toggleFeeder('ups','off')">OFF</button>
+        </div>
+      </div>
+      <div class="feeder-row">
+        <span class="dot dot-ok" id="d-dcdb"></span>
+        <span class="feeder-name">DC-DB / TRM bank (CB 16A)</span>
+        <span class="feeder-val" id="v-dcdb">41.2A</span>
+        <div class="tog">
+          <button id="b-dcdb-on" class="active-on" onclick="toggleFeeder('dcdb','on')">ON</button>
+          <button id="b-dcdb-off" onclick="toggleFeeder('dcdb','off')">OFF</button>
+        </div>
+      </div>
+      <div class="feeder-row">
+        <span class="dot dot-ok" id="d-dsp"></span>
+        <span class="feeder-name">DSP rack PDU (32A MCCB)</span>
+        <span class="feeder-val" id="v-dsp">12.6A</span>
+        <div class="tog">
+          <button id="b-dsp-on" class="active-on" onclick="toggleFeeder('dsp','on')">ON</button>
+          <button id="b-dsp-off" onclick="toggleFeeder('dsp','off')">OFF</button>
+        </div>
+      </div>
+      <div class="feeder-row">
+        <span class="dot dot-off" id="d-dg2"></span>
+        <span class="feeder-name">DG / ATS mode</span>
+        <span class="feeder-val" id="v-dg2" style="font-size:10px;color:var(--text-muted)">standby</span>
+        <div class="tog">
+          <button id="b-dg-auto" class="active-auto" onclick="toggleFeeder('dg','auto')">AUTO</button>
+          <button id="b-dg-man" onclick="toggleFeeder('dg','man')">MAN</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="card" style="flex:0">
+      <div class="card-title">PLC status · S7-1214C</div>
+      <div class="plc-status">
+        <div class="plc-row"><span class="plc-key">CPU mode</span><span class="plc-val" id="plc-mode">RUN</span></div>
+        <div class="plc-row"><span class="plc-key">Scan cycle</span><span class="plc-val" id="plc-scan">12ms</span></div>
+        <div class="plc-row"><span class="plc-key">I0.0 (incomer)</span><span class="plc-val" id="plc-i00" style="color:var(--text-success)">1</span></div>
+        <div class="plc-row"><span class="plc-key">M0.0 (fail latch)</span><span class="plc-val" id="plc-m00">0</span></div>
+        <div class="plc-row"><span class="plc-key">Q0.0 (DG cmd)</span><span class="plc-val" id="plc-q00">0</span></div>
+        <div class="plc-row"><span class="plc-key">PROFINET</span><span class="plc-val" style="color:var(--text-success)">OK</span></div>
+        <div class="plc-row"><span class="plc-key">Watchdog</span><span class="plc-val" style="color:var(--text-success)">OK</span></div>
+        <div class="plc-row"><span class="plc-key">E-STOP loop</span><span class="plc-val" id="plc-estop" style="color:var(--text-success)">HEALTHY</span></div>
+      </div>
+    </div>
+    <div class="card" style="flex:1">
+      <div class="card-title" style="display:flex;justify-content:space-between">
+        <span>Alarm / event log</span>
+        <button class="btn-main" style="font-size:10px;padding:2px 8px" onclick="clearAlarms()">Clear</button>
+      </div>
+      <div id="alarm-log" style="max-height:160px;overflow-y:auto"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TRM health bar -->
+<div class="card" style="margin-bottom:12px">
+  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+    <span>TRM bank health — 588 elements</span>
+    <span style="font-size:11px;color:var(--text-secondary)" id="trm-health-lbl">582 active · 6 for calibration · DC-DB 41.2A · 38.4°C</span>
+  </div>
+  <div class="bar-wrap" style="height:10px;margin-top:4px">
+    <div id="trm-bar" class="bar-fill bar-ok" style="width:99%"></div>
+  </div>
+  <div style="display:flex;gap:16px;margin-top:8px">
+    <div style="font-size:11px;color:var(--text-secondary)"><span class="dot dot-ok"></span>Sub-cluster 1–10: nominal</div>
+    <div style="font-size:11px;color:var(--text-secondary)"><span class="dot dot-ok"></span>Sub-cluster 11: nominal</div>
+    <div style="font-size:11px;color:var(--text-warn)" id="trm-cluster12"><span class="dot dot-warn"></span>Sub-cluster 12: 2 elements low fwd pwr</div>
+  </div>
+</div>
+
+<!-- Interlocks -->
+<div class="card" style="margin-bottom:1.5rem">
+  <div class="card-title">Hardwired interlock & safety status (read-only — independent of PLC)</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">52-incomer aux</span><span id="il-incomer" class="plc-val" style="color:var(--text-success);font-size:12px">CLOSED</span></div>
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">Mains contactor</span><span id="il-mctr" class="plc-val" style="color:var(--text-success);font-size:12px">ON</span></div>
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">DG contactor</span><span id="il-dgctr" class="plc-val" style="color:var(--text-muted);font-size:12px">LOCKED OUT</span></div>
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">Array fence gate</span><span class="plc-val" style="color:var(--text-success);font-size:12px">CLOSED</span></div>
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">E-STOP series loop</span><span class="plc-val" style="color:var(--text-success);font-size:12px">HEALTHY</span></div>
+    <div class="plc-row"><span class="plc-key" style="font-size:12px">Surge arrestor (PCC)</span><span class="plc-val" style="color:var(--text-success);font-size:12px">OK</span></div>
+  </div>
+</div>
+
+<hr class="section-divider">
+
+<!-- REAL-WORLD IMPLEMENTATION GUIDE -->
+<div style="font-size:13px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:1.25rem">
+  Real-world implementation guide
+</div>
+
+<!-- 1. Hardware -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-cpu" aria-hidden="true"></i> 1. Hardware components & bill of materials</div>
+  <table class="spec-table">
+    <thead><tr><th>#</th><th>Component</th><th>Specification / part class</th><th>Qty</th><th>Purpose in this design</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Main PLC CPU</td><td>Siemens SIMATIC S7-1214C DC/DC/DC (6ES7214-1AG40-0XB0)<br>14 DI / 10 DQ · 24V DC · 2× PROFINET</td><td>1</td><td>Executes ladder logic; runs Rungs 1–6 (mains-fail latch, DG start, timer, interlock, OT trip, watchdog)</td></tr>
+      <tr><td>2</td><td>Remote I/O head</td><td>Siemens ET 200SP IM 155-6 PN (6ES7155-6AU01-0BN0)<br>IP65 rated, DIN-rail, PROFINET</td><td>1</td><td>Mounted in rooftop junction box to keep field-wiring runs short; reads limit switches, drives contactor coils</td></tr>
+      <tr><td>3</td><td>Digital I/O module</td><td>SM 1221 8× DI, 24V DC (6ES7221-1BF32-0XB0)</td><td>2</td><td>Expansion DI for breaker aux. contacts, safety loop, DG-ready, fence gates, manual reset</td></tr>
+      <tr><td>4</td><td>Analogue input module</td><td>SM 1231 4× AI, 4–20mA (6ES7231-4HD32-0XB0)</td><td>1</td><td>TRM bank DC-DB temperature (Pt100 / 4-20mA xducer) and DC-DB current measurement</td></tr>
+      <tr><td>5</td><td>Industrial Ethernet switch</td><td>Scalance XC108-2 (6GK5108-2BB00-2AC2) · 100Mbps · ring/star</td><td>1</td><td>Connects PLC ↔ remote I/O ↔ HMI workstation on PROFINET LAN; supports ring topology for redundancy</td></tr>
+      <tr><td>6</td><td>Interposing relays</td><td>Phoenix Contact PLC-RSC-24DC/21-21 (24V coil, 6A, 2CO)<br>with LED indicator and snubber diode</td><td>12</td><td>Galvanically isolate PLC 24V DC outputs from 230V AC contactor coil circuits; prevents back-EMF damage</td></tr>
+      <tr><td>7</td><td>AC contactors</td><td>Siemens SIRIUS 3RT2 series, AC-1 duty, 40–63A rating<br>coil: 230V AC, aux. contacts: 2NO+2NC</td><td>5</td><td>Mains feeder, DG feeder, ACDB feeder, DC-DB feeder, TRM bank — 1 each; motorised for PLC command</td></tr>
+      <tr><td>8</td><td>Motorised / shunt-trip MCCBs</td><td>Schneider EasyPact CVS / Siemens 3VA2 with motorised operator<br>100A, 200A, 32A ratings per feeder</td><td>4</td><td>Remote open/close on command from PLC via relay; protective trip still independent (thermal-magnetic)</td></tr>
+      <tr><td>9</td><td>Hardwired E-STOP buttons</td><td>Telemecanique XB4BS8445 — 40mm mushroom, twist-release, IP65<br>2 NC contacts each, positive-opening</td><td>3</td><td>Series safety loop (ground floor panel + array fence + rooftop) — trips master contactor coil supply, PLC cannot override</td></tr>
+      <tr><td>10</td><td>Fence-gate limit switches</td><td>Telemecanique XCMD21C13 · IP67 · 2NC safety contacts</td><td>2</td><td>In series with E-STOP loop; opening gate de-energises master contactor even if PLC running</td></tr>
+      <tr><td>11</td><td>Safety relay module</td><td>Pilz PNOZ X3.10P · 2-channel, monitoring NC series loop</td><td>1</td><td>Monitors E-STOP + fence loop; drives master contactor; provides feedback channel to PLC I0.7 (monitor only)</td></tr>
+      <tr><td>12</td><td>24V DC power supply</td><td>Siemens SITOP PSU100S 24V/10A (6EP1334-2BA20) + 1 redundant</td><td>2</td><td>Supplies PLC, relays, remote I/O; redundant pair ensures PLC stays alive on single PSU failure</td></tr>
+      <tr><td>13</td><td>Current transducers</td><td>LEM LA 55-P (DC/AC, 4-20mA output, 55A rated)<br>1 per feeder</td><td>5</td><td>Real-time current measurement to AI module; enables over-current detection in PLC and SCADA trending</td></tr>
+      <tr><td>14</td><td>Temperature sensor</td><td>Pt100 RTD (IEC 751 Class B) + 4-20mA transmitter, IP65<br>range: –20 to +100°C</td><td>2</td><td>TRM DC-DB enclosure temperature + array junction box ambient; input to Rung 5 OT-trip logic</td></tr>
+      <tr><td>15</td><td>Surge protection devices</td><td>Phoenix Contact VAL-MS-T1/T2+T3 · PCC installation<br>OBO 5093 200 V series · UPS I/O + PLC field boundary</td><td>4</td><td>Type 1+2+3 at PCC; Type 2 at UPS I/O and PLC panel field-wiring boundary; protect from lightning transients</td></tr>
+      <tr><td>16</td><td>HMI workstation</td><td>Siemens IPC477E panel PC (or Weintek cMT3151X 15" panel HMI)<br>WinCC Runtime / EasyBuilder Pro</td><td>1</td><td>Runs SCADA screens; trends; alarm log; OPC-UA server/client</td></tr>
+      <tr><td>17</td><td>DIN-rail control panel</td><td>Rittal AE 1380.500 · IP54 · 600×600×250mm</td><td>1</td><td>Houses PLC, relays, PSUs, terminal strips; floor-standing near main LT board in ground-floor control room</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- 2. Wiring -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-plug" aria-hidden="true"></i> 2. Wiring & installation method</div>
+
+  <div class="impl-h3">Control panel wiring</div>
+  <div class="point"><div class="point-num">1</div><div>Use <strong>separate cable ducts</strong> inside the panel for 230V AC circuits (feeder contactor coils) and 24V DC control circuits — minimum 50mm separation or a metallic divider, per IEC 60204-1 §14.1. Never bundle high-voltage and low-voltage wiring in the same duct.</div></div>
+  <div class="point"><div class="point-num">2</div><div>All 24V DC conductors: 1.0mm² minimum, ferrule-terminated (Phoenix CRIMPFOX or equivalent), colour-coded blue positive / white negative per IEC 60446. PLC I/O terminal wires should be stranded, 0.75mm² minimum, ferruled — never bare-end into PLC terminals.</div></div>
+  <div class="point"><div class="point-num">3</div><div>Interposing relay coils must have a <strong>snubber diode</strong> (1N4007) across the coil — without this, the inductive back-EMF spike on PLC output turn-off can degrade or destroy the transistor output stage of the S7-1214C.</div></div>
+  <div class="point"><div class="point-num">4</div><div>Motorised MCCB auxiliary contacts and contactor auxiliary contacts are brought to PLC digital inputs via <strong>potential-free (dry) contacts</strong> only — never feed an external voltage back into the PLC DI terminal. The S7-1214C sources its own 24V into the DI commons.</div></div>
+  <div class="point"><div class="point-num">5</div><div>Earth/PE bus bar (25×6mm copper) runs the full length of the panel backplate with connections to every equipment chassis, DIN-rail mounting brackets, and cable screen termination points. Bond to MEB via 16mm² green-yellow conductor.</div></div>
+
+  <div class="impl-h3">Field wiring (rooftop / array)</div>
+  <div class="point"><div class="point-num">6</div><div>All field cables to the rooftop remote I/O station must be <strong>individually screened, twisted-pair</strong> (LIYCY or equivalent, IEC 60189) — the antenna environment at 206.5 MHz creates significant induced RF on any unscreened run. Screen drained at the PLC panel end only (single-point screening) to avoid ground loops.</div></div>
+  <div class="point"><div class="point-num">7</div><div>E-STOP and fence limit-switch cables use <strong>separate, dedicated conduit</strong> or separate armoured cable from all other field wiring. Safety-loop wiring must not share conduit with motor/actuator power cables (this is mandatory per IEC 62061 SIL requirements).</div></div>
+  <div class="point"><div class="point-num">8</div><div>PROFINET drop to the remote I/O unit: use <strong>Cat 6A industrial Ethernet cable</strong> (PUR-jacketed, UV-stable), with proper IP67-rated M12 D-coded connectors at the ET 200SP. Maximum cable run 100m per segment; use a Scalance switch if longer distances needed.</div></div>
+  <div class="point"><div class="point-num">9</div><div>Install metallic cable trays (stainless or HDG) for all field runs; bond trays to PE at every junction. This provides additional RF shielding and lightning-current bypass path independent of cable screens.</div></div>
+  <div class="point"><div class="point-num">10</div><div>TRM bank DC-DB current transducers (LEM LA 55-P): pass the DC feeder conductor through the CT aperture — do not cut the conductor. Route 4-20mA output to AI module via screened pair; screen at panel end only.</div></div>
+</div>
+
+<!-- 3. PLC Programming -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-code" aria-hidden="true"></i> 3. PLC programming — TIA Portal steps</div>
+  <div class="point"><div class="point-num">1</div><div><strong>Create TIA Portal project</strong> → Add S7-1214C CPU (firmware V4.5+) → add ET 200SP IM under PROFINET → configure IP addresses: PLC 192.168.1.10, remote I/O 192.168.1.11, HMI 192.168.1.20. Enable "RT (real-time)" class for PROFINET IO.</div></div>
+  <div class="point"><div class="point-num">2</div><div><strong>Define tag table</strong> (PLC tags window) before writing any code — create all I/O tags from Appendix C of the report: I0.0=52_Incomer_Aux, I0.1=Manual_Reset, Q0.0=DG_Start_Cmd, M0.0=Mains_Fail_Latch, etc. Good tag names make the ladder logic self-documenting and maintenance-friendly.</div></div>
+  <div class="point"><div class="point-num">3</div><div><strong>Rung 1 — mains-fail latch</strong>: Use NORM (normalize) and SCALE blocks to convert the AI raw count for incomer voltage to volts; add a comparator (LT block) to detect &lt;350V; feed into a Set/Reset FF latch — only set on low-voltage condition, only reset on Manual_Reset contact. Implement hysteresis (380V reset threshold vs. 350V trip threshold) to prevent chatter.</div></div>
+  <div class="point"><div class="point-num">4</div><div><strong>Rung 3 — transfer timer</strong>: Use IEC TON block (not Siemens-proprietary S5TIME) for portability. Set PT (preset time) = T#10S. The timer bit (T1.Q) goes TRUE after 10 seconds of continuous DG_Start_Cmd = 1. Wire timer IN to Q0.0 so the timer auto-resets if DG command drops.</div></div>
+  <div class="point"><div class="point-num">5</div><div><strong>Rung 4 — interlock</strong>: The NC contact of Mains_Ctr_ON (read from I0.3, the mains contactor aux. input) must be proven open before DG_Ctr_Enable can energise. In TIA Portal, this is simply a NC contact symbol on I0.3 in series. Additionally add a MOVE block to write an alarm-level 3 entry to a data block when the transfer completes.</div></div>
+  <div class="point"><div class="point-num">6</div><div><strong>Rung 5 — OT trip</strong>: Use NORM + MUL blocks to convert 4-20mA raw count to temperature in °C. Use a GE (≥) comparator with 65°C threshold wired to a SET coil (latched). Add a separate RS latch so the trip can only be cleared by a deliberate RESET command from the HMI (operator acknowledgement), not automatically when temperature drops.</div></div>
+  <div class="point"><div class="point-num">7</div><div><strong>Watchdog / Rung 6</strong>: Enable the S7-1214C hardware watchdog under CPU properties (default 150ms). Additionally, configure a WinCC OPC-UA heartbeat write (HMI writes to a data block every 5 seconds); if the PLC does not see a fresh write within 10 seconds it sets a Comms_Fail_Flag that triggers Rung 6, resetting all outputs to safe state.</div></div>
+  <div class="point"><div class="point-num">8</div><div><strong>Alarm integration</strong>: Use the S7-1214C Alarm_DQ instruction to generate time-stamped alarm messages automatically when coil conditions change. Configure alarm buffer size ≥500 entries (CPU properties → Alarms). These flush to WinCC Alarm Management via OPC-UA, which writes to an SQLite historian on the HMI PC.</div></div>
+</div>
+
+<!-- 4. SCADA / HMI -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-device-desktop" aria-hidden="true"></i> 4. SCADA / HMI implementation</div>
+  <div class="point"><div class="point-num">1</div><div><strong>Communication protocol</strong>: OPC-UA (port 4840) between S7-1214C and WinCC Runtime — configure OPC-UA server on PLC (TIA Portal → Properties → OPC-UA → enable server, set session timeout 30s). WinCC adds PLC as OPC-UA data source. Compared to S7 protocol, OPC-UA is firewall-friendly and vendor-neutral.</div></div>
+  <div class="point"><div class="point-num">2</div><div><strong>Dashboard screen</strong>: Build power-flow mimic diagram using WinCC Graphics Designer — feeder lines change colour (green=ON, red=OFF) based on contactor aux. contact tags. Use dynamic text fields bound to AI-channel tags for live amperage readouts. Refresh rate: 1 second for status, 200ms for alarms.</div></div>
+  <div class="point"><div class="point-num">3</div><div><strong>Access levels</strong>: Configure 3 user roles in WinCC User Administrator — L1 Operator (view only + alarm acknowledge), L2 Engineer (feeder ON/OFF, DG auto/manual), L3 Maintenance (all + watchdog override + manual trip reset). All commands require a 2-step confirm dialog (click command → confirm popup with 5-second timeout).</div></div>
+  <div class="point"><div class="point-num">4</div><div><strong>Historian / trending</strong>: Enable WinCC Tag Logging for all AI channels (current, temperature, voltage) at 10-second intervals; store minimum 90 days on HMI PC local SSD. For longer retention, configure OPC-UA export to a network share on the ARIES data server. This enables correlating electrical events against ADPT observation-run records.</div></div>
+  <div class="point"><div class="point-num">5</div><div><strong>Remote monitoring</strong>: Install Siemens SINEMA Remote Connect agent on HMI PC; connect to ARIES campus VPN gateway (OpenVPN or IPsec). This allows SCADA screen viewing from the ARIES network operations room without a separate plant network. For SMS/email alerts, configure WinCC Alarm Management to trigger on Critical-severity alarms via SMTP or GSM modem.</div></div>
+</div>
+
+<!-- 5. Earthing -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-circle-dashed" aria-hidden="true"></i> 5. Earthing & EMC requirements for the PLC installation</div>
+  <div class="point"><div class="point-num">1</div><div>The PLC panel's PE bus must connect to the building's Main Earth Bus Bar (MEB) via a dedicated 16mm² green-yellow conductor — do not share this conductor with any other equipment's PE path. This prevents ground-loop noise from the antenna structure entering the PLC supply.</div></div>
+  <div class="point"><div class="point-num">2</div><div>The ET 200SP remote I/O unit on the rooftop connects to the <strong>RF/clean signal earth</strong> (star earth system) at the nearest bonding point on the antenna ring, not the equipment/body earth run. These two earths are only bonded at the MEB — having two paths to earth creates a loop that picks up the very clutter currents the fence is designed to block.</div></div>
+  <div class="point"><div class="point-num">3</div><div>All PROFINET cable screens and field-cable screens terminate at a dedicated <strong>screen/PE rail</strong> inside the PLC panel (separate from the PE bus bar) — single-point drain at the panel end. The remote field end of each screen is left floating (insulated). This is IEC 61800-3 EMC practice for inverter/RF environments.</div></div>
+  <div class="point"><div class="point-num">4</div><div>Install <strong>ferrite clamp cores</strong> (Fair-Rite 2643625702, suitable for 100–300 MHz) on all field cables where they enter the PLC panel, and on the PROFINET cable at the ET 200SP port. The 206.5 MHz radar operating frequency can couple into long cable runs — the ferrites add impedance at that frequency without affecting DC or low-frequency signals.</div></div>
+</div>
+
+<!-- 6. Commissioning -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-checklist" aria-hidden="true"></i> 6. Commissioning & acceptance test procedure</div>
+  <div class="point"><div class="point-num">1</div><div><strong>Loop check</strong>: Before energising, perform point-to-point continuity test for every DI, DO, and AI signal using a loop calibrator. Verify each tag shows correct value in the PLC tag table with signal source connected. Document with a loop-check record sheet (tag name, source, expected vs. actual reading).</div></div>
+  <div class="point"><div class="point-num">2</div><div><strong>Safety-loop test (pre-PLC-power)</strong>: With PLC control power OFF, verify the hardwired E-STOP series loop independently de-energises the master contactor by pressing each E-STOP button in turn. Verify each fence-gate limit switch also breaks the loop. This test proves the safety function is truly independent of PLC — the most critical commissioning check in this design.</div></div>
+  <div class="point"><div class="point-num">3</div><div><strong>Mains-fail transfer rehearsal</strong>: Simulate a mains fail by manually opening the 52-incomer CB auxiliary-contact test terminal (I0.0 → 0). Verify Rung 1 latches M0.0, Rung 2 energises Q0.0 (DG_Start_Cmd), the 10-second TON timer begins, and Rung 4 enables DG contactor after timer Q bit goes TRUE. Verify mains contactor drops out before DG contactor picks up (interlock). Total observed transfer time should be 10–12 seconds.</div></div>
+  <div class="point"><div class="point-num">4</div><div><strong>OT trip test</strong>: Using the AI module calibration function in TIA Portal, inject a scaled value equivalent to 66°C (above 65°C threshold). Verify Rung 5 sets Q0.3 (TRM_DB_Trip_Cmd) and the alarm log records a CRITICAL latched event. Verify that simply removing the injected value does NOT auto-clear the trip — a manual HMI acknowledge is required.</div></div>
+  <div class="point"><div class="point-num">5</div><div><strong>Watchdog / comms-loss test</strong>: Unplug the PROFINET cable from the HMI PC. Verify within the watchdog timeout (10 seconds) that Rung 6 fires and all PLC outputs reset to 0 (safe state). Reconnect cable; verify SCADA reconnects automatically and logs the comms-loss event with correct timestamp.</div></div>
+  <div class="point"><div class="point-num">6</div><div><strong>Daily self-test routine</strong>: Configure a timed OB (Organisation Block OB10 in TIA Portal, scheduled 06:30 daily) to run a diagnostic cycle: check all DI feedback signals match commanded DO states, verify watchdog is live, verify safety-loop status, log a "daily self-test passed" INFO event to the alarm historian. This is visible on the SCADA alarms screen and provides an automatic maintenance audit trail.</div></div>
+</div>
+
+<!-- Standards -->
+<div class="impl-section">
+  <div class="impl-h2"><i class="ti ti-file-certificate" aria-hidden="true"></i> 7. Applicable standards & references</div>
+  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 61131-3 — PLC programming</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 60204-1 — electrical safety, machinery</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 62061 — functional safety (SIL)</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 61800-3 — EMC for drives</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 61158 / 61784 — PROFINET</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IS 3043:1987 — earthing code of practice</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IS 732 — wiring code</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEC 60617 — SLD symbols</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> OPC UA (IEC 62541)</span>
+    <span class="chip"><i class="ti ti-file-text" aria-hidden="true"></i> IEEE 802.3 (Ethernet)</span>
+  </div>
+</div>
+
+</div>
+
+<script>
+const STATE = {
+  mainsOk: true,
+  feeders: { acdb:true, ups:true, dcdb:true, dsp:true },
+  dgMode: 'auto',
+  dgRunning: false,
+  dgTimer: 0,
+  dgInterval: null,
+  alarms: [],
+  tick: 0
+};
+
+function timeStr(){
+  const d=new Date();
+  return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0')+':'+d.getSeconds().toString().padStart(2,'0');
+}
+
+function addAlarm(msg,sev){
+  STATE.alarms.unshift({t:timeStr(),msg,sev});
+  if(STATE.alarms.length>20) STATE.alarms.pop();
+  renderAlarms();
+}
+
+function renderAlarms(){
+  const el=document.getElementById('alarm-log');
+  if(!el) return;
+  if(STATE.alarms.length===0){
+    el.innerHTML='<div style="font-size:12px;color:var(--text-muted);padding:10px 0">No active alarms</div>';
+    return;
+  }
+  el.innerHTML=STATE.alarms.map(a=>`
+    <div class="alarm-row">
+      <span class="alarm-time">${a.t}</span>
+      <span class="alarm-msg">${a.msg}</span>
+      <span class="alarm-sev sev-${a.sev}">${a.sev.toUpperCase()}</span>
+    </div>`).join('');
+}
+
+function clearAlarms(){
+  STATE.alarms=[];
+  renderAlarms();
+  addAlarm('Alarm log cleared by operator','info');
+}
+
+function toggleFeeder(id,state){
+  if(id==='dg'){
+    STATE.dgMode=state;
+    document.getElementById('b-dg-auto').className=state==='auto'?'active-auto':'';
+    document.getElementById('b-dg-man').className=state==='man'?'active-on':'';
+    addAlarm(`DG/ATS mode changed to ${state.toUpperCase()} by operator`,'info');
+    return;
+  }
+  const wasOn=STATE.feeders[id];
+  STATE.feeders[id]=(state==='on');
+  const newOn=STATE.feeders[id];
+  const names={acdb:'ACDB feeder',ups:'UPS input feeder',dcdb:'DC-DB (TRM bank)',dsp:'DSP rack PDU'};
+  if(wasOn!==newOn){
+    addAlarm(`${names[id]} turned ${newOn?'ON':'OFF'} by operator`,newOn?'info':'warn');
+    if(!newOn && id==='dcdb'){
+      document.getElementById('trm-dot').className='dot dot-off';
+      document.getElementById('trm-val').textContent='OFFLINE';
+      document.getElementById('trm-sub').textContent='DC-DB feeder open';
+      addAlarm('TRM bank (588ch) offline — radar observation interrupted!','warn');
+    }
+    if(newOn && id==='dcdb'){
+      document.getElementById('trm-dot').className='dot dot-ok';
+      document.getElementById('trm-val').textContent='582/588';
+      document.getElementById('trm-sub').textContent='DC-DB: 41.2A · 38.4°C';
+    }
+  }
+  updateFeederUI(id);
+  updateSLD();
+}
+
+function updateFeederUI(id){
+  const on=STATE.feeders[id];
+  const vals={acdb:'28.4A',ups:'35.1A',dcdb:'41.2A',dsp:'12.6A'};
+  const ons=document.getElementById('b-'+id+'-on');
+  const offs=document.getElementById('b-'+id+'-off');
+  const dot=document.getElementById('d-'+id);
+  const val=document.getElementById('v-'+id);
+  if(ons) ons.className=on?'active-on':'';
+  if(offs) offs.className=on?'':'active-off';
+  if(dot) dot.className='dot '+(on?'dot-ok':'dot-off');
+  if(val) val.textContent=on?vals[id]:'0A';
+}
+
+function updateSLD(){
+  const ok='#22c55e';
+  const off='var(--border-strong)';
+  const wires={
+    acdb:'f-acdb', ups:'f-ups', dcdb:'f-dcdb', dsp:'f-dsp'
+  };
+  const bus=STATE.mainsOk||STATE.dgRunning;
+  const busEl=document.getElementById('ltbus');
+  if(busEl) busEl.setAttribute('fill',bus?ok:off);
+  ['wire-grid','wire-tx'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.setAttribute('stroke',STATE.mainsOk?ok:off);
+  });
+  Object.entries(wires).forEach(([fid,wid])=>{
+    const el=document.getElementById(wid);
+    if(el) el.setAttribute('stroke',(STATE.feeders[fid]&&bus)?ok:off);
+  });
+  const dgLine=document.getElementById('f-dg');
+  if(dgLine){
+    dgLine.setAttribute('stroke',STATE.dgRunning?ok:'var(--border-strong)');
+    dgLine.setAttribute('stroke-dasharray',STATE.dgRunning?'0':'4,3');
+    dgLine.setAttribute('stroke-width',STATE.dgRunning?'2.5':'1.5');
+  }
+}
+
+function triggerMainsFail(){
+  if(!STATE.mainsOk) return;
+  STATE.mainsOk=false;
+  document.getElementById('mains-dot').className='dot dot-err';
+  document.getElementById('mains-val').textContent='FAIL';
+  document.getElementById('mains-sub').textContent='Incomer CB: open';
+  document.getElementById('sys-badge').textContent='Mains fault';
+  document.getElementById('sys-badge').className='badge badge-err';
+  document.getElementById('il-incomer').textContent='OPEN';
+  document.getElementById('il-incomer').style.color='var(--text-danger)';
+  document.getElementById('il-mctr').textContent='OFF';
+  document.getElementById('il-mctr').style.color='var(--text-danger)';
+  document.getElementById('plc-i00').textContent='0';
+  document.getElementById('plc-i00').style.color='var(--text-danger)';
+  document.getElementById('plc-m00').textContent='1';
+  addAlarm('Mains fail — incomer I0.0 = 0 — fail latch M0.0 set','crit');
+  updateSLD();
+  if(STATE.dgMode==='auto'){
+    startDGSequence();
+  }
+}
+
+function startDGSequence(){
+  document.getElementById('dg-dot').className='dot dot-warn';
+  document.getElementById('dg-val').textContent='Starting...';
+  document.getElementById('dg-sub').textContent='DG cranking — Rung 2 active';
+  document.getElementById('dg-timer-bar').style.display='block';
+  document.getElementById('plc-q00').textContent='1';
+  document.getElementById('plc-q00').style.color='var(--text-warning)';
+  document.getElementById('dg-status').textContent='starting';
+  addAlarm('DG auto-start command issued (Q0.0=1) — transfer timer T1 running','warn');
+  let elapsed=0;
+  const total=10;
+  STATE.dgInterval=setInterval(()=>{
+    elapsed++;
+    const pct=Math.round(elapsed/total*100);
+    const bar=document.getElementById('dg-timer-fill');
+    if(bar) bar.style.width=pct+'%';
+    const lbl=document.getElementById('dg-timer-label');
+    if(lbl) lbl.textContent='Transfer delay: '+(total-elapsed)+'s remaining (T1 timer)';
+    if(elapsed>=total){
+      clearInterval(STATE.dgInterval);
+      completeDGTransfer();
+    }
+  },1000);
+}
+
+function completeDGTransfer(){
+  STATE.dgRunning=true;
+  document.getElementById('dg-dot').className='dot dot-ok';
+  document.getElementById('dg-val').textContent='Running';
+  document.getElementById('dg-sub').textContent='DG on bus · 63kVA';
+  document.getElementById('dg-timer-bar').style.display='none';
+  document.getElementById('dg-status').textContent='running';
+  document.getElementById('v-dg2').textContent='running';
+  document.getElementById('d-dg2').className='dot dot-ok';
+  document.getElementById('il-dgctr').textContent='ON';
+  document.getElementById('il-dgctr').style.color='var(--text-success)';
+  document.getElementById('sys-badge').textContent='DG supply active';
+  document.getElementById('sys-badge').className='badge badge-warn';
+  document.getElementById('plc-q00').textContent='1';
+  addAlarm('DG transfer complete — T1.Q=1, DG contactor ON, mains contactor interlocked OFF','ok');
+  updateSLD();
+}
+
+function resetAll(){
+  if(STATE.dgInterval) clearInterval(STATE.dgInterval);
+  Object.assign(STATE,{mainsOk:true,feeders:{acdb:true,ups:true,dcdb:true,dsp:true},dgRunning:false,dgTimer:0,dgInterval:null});
+  document.getElementById('mains-dot').className='dot dot-ok';
+  document.getElementById('mains-val').textContent='415V / 50Hz';
+  document.getElementById('mains-sub').textContent='Incomer CB: closed';
+  document.getElementById('dg-dot').className='dot dot-off';
+  document.getElementById('dg-val').textContent='Standby';
+  document.getElementById('dg-sub').textContent='Auto-start armed';
+  document.getElementById('dg-timer-bar').style.display='none';
+  document.getElementById('dg-status').textContent='standby';
+  document.getElementById('d-dg2').className='dot dot-off';
+  document.getElementById('v-dg2').textContent='standby';
+  document.getElementById('trm-dot').className='dot dot-ok';
+  document.getElementById('trm-val').textContent='582/588';
+  document.getElementById('trm-sub').textContent='DC-DB: 41.2A · 38.4°C';
+  document.getElementById('sys-badge').textContent='System nominal';
+  document.getElementById('sys-badge').className='badge badge-ok';
+  document.getElementById('plc-i00').textContent='1';
+  document.getElementById('plc-i00').style.color='var(--text-success)';
+  document.getElementById('plc-m00').textContent='0';
+  document.getElementById('plc-q00').textContent='0';
+  document.getElementById('plc-q00').style.color='var(--text-primary)';
+  document.getElementById('il-incomer').textContent='CLOSED';
+  document.getElementById('il-incomer').style.color='var(--text-success)';
+  document.getElementById('il-mctr').textContent='ON';
+  document.getElementById('il-mctr').style.color='var(--text-success)';
+  document.getElementById('il-dgctr').textContent='LOCKED OUT';
+  document.getElementById('il-dgctr').style.color='var(--text-muted)';
+  ['acdb','ups','dcdb','dsp'].forEach(id=>updateFeederUI(id));
+  addAlarm('System reset — all feeders nominal','ok');
+  updateSLD();
+}
+
+function liveFlicker(){
+  if(!STATE.mainsOk && !STATE.dgRunning) return;
+  const noise=()=>(Math.random()-.5)*.8;
+  const acdbEl=document.getElementById('acdb-a');
+  const upsEl=document.getElementById('ups-a');
+  const dcdbEl=document.getElementById('dcdb-a');
+  const dspEl=document.getElementById('dsp-a');
+  if(STATE.feeders.acdb && acdbEl) acdbEl.textContent=(28.4+noise()).toFixed(1)+'A';
+  if(STATE.feeders.ups && upsEl) upsEl.textContent=(35.1+noise()).toFixed(1)+'A';
+  if(STATE.feeders.dcdb && dcdbEl){
+    const t=(41.2+noise()).toFixed(1);
+    dcdbEl.textContent=t+'A';
+    document.getElementById('trm-sub').textContent=`DC-DB: ${t}A · ${(38.4+noise()/2).toFixed(1)}°C`;
+  }
+  if(STATE.feeders.dsp && dspEl) dspEl.textContent=(12.6+noise()/2).toFixed(1)+'A';
+  const scanEl=document.getElementById('plc-scan');
+  if(scanEl) scanEl.textContent=Math.round(11+Math.random()*3)+'ms';
+}
+
+addAlarm('SCADA session started — all systems nominal','ok');
+addAlarm('Daily self-test passed (PLC, ATS, E-STOP, fence)','ok');
+updateSLD();
+setInterval(liveFlicker,1200);
+</script>
